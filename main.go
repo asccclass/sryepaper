@@ -15,7 +15,12 @@ import(
    "github.com/joho/godotenv"
 )
 
-func handleRequest(conn net.Conn)  {
+type Sryepaper struct {
+   path		string		`json:"path"`
+   port		string		`json:"port"` 
+}
+
+func(epaper *Sryepaper) handleRequest(conn net.Conn)  {
    remoteAddr := conn.RemoteAddr().String()
    fmt.Println("Client connected from:" + remoteAddr)
    buf := make([]byte, 2048)
@@ -27,7 +32,7 @@ func handleRequest(conn net.Conn)  {
    fileName := string(buf[:n])
    conn.Write([]byte("ok"))
    // Create file
-   f, err := os.Create(fileName)
+   f, err := os.Create(epaper.path + "/" + fileName)
    if err != nil {
       fmt.Println(err.Error())
       return
@@ -58,7 +63,16 @@ func main() {
       fmt.Println("PORT is not set")
       return
    } 
-   l, err := net.Listen("tcp", ":" + port)
+   path := os.Getenv("SaveFileDir")
+   if path == "" {
+      fmt.Println("SaveFileDir is not set in envfile")
+      return
+   }
+   epr := &Sryepaper {
+      port: port,
+      path: path,
+   }
+   l, err := net.Listen("tcp", ":" + epr.port)
    if err != nil {
       fmt.Println(err.Error())
       return
@@ -72,15 +86,15 @@ func main() {
       ctx, cancel := context.WithTimeout(context.Background(), time.Second * 15)
       defer cancel()
       offLine(ctx)   // exit before doing this
-      os.Exit(0)
+      return
    }()
 
    for {
       conn, err := l.Accept()
       if err != nil {
          fmt.Println(err.Error())
-         os.Exit(1)
+         return
       }
-      go handleRequest(conn)
+      go epr.handleRequest(conn)
    }
 }
